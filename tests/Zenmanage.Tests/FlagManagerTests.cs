@@ -187,6 +187,35 @@ public sealed class FlagManagerTests
         Assert.Equal("fallback", usage.DefaultValue);
     }
 
+    [Fact]
+    public async Task SingleAsync_ReportsUsageWithInlineDefaultValue_WhenFlagFound()
+    {
+        var flagData = new FlagData("1", FlagType.Boolean, "simple", "Simple", TestData.BooleanTarget(true), Array.Empty<Rule>());
+        var apiClient = new Helpers.FakeApiClient(new RulesResponse("1", new[] { flagData }));
+        var manager = new FlagManager(apiClient, new NullCache(), new RuleEngine(), 60, NullLogger.Instance);
+
+        _ = await manager.SingleAsync("simple", false);
+
+        var usage = Assert.Single(apiClient.UsageReports);
+        Assert.Equal("simple", usage.Key);
+        Assert.Equal(false, usage.DefaultValue);
+    }
+
+    [Fact]
+    public async Task SingleAsync_ReportsUsageWithDefaultsCollectionValue_WhenFlagFound()
+    {
+        var flagData = new FlagData("1", FlagType.String, "simple", "Simple", TestData.StringTarget("actual"), Array.Empty<Rule>());
+        var apiClient = new Helpers.FakeApiClient(new RulesResponse("1", new[] { flagData }));
+        var defaults = new DefaultsCollection().Add("simple", "fallback");
+        var manager = new FlagManager(apiClient, new NullCache(), new RuleEngine(), 60, NullLogger.Instance).WithDefaults(defaults);
+
+        _ = await manager.SingleAsync("simple");
+
+        var usage = Assert.Single(apiClient.UsageReports);
+        Assert.Equal("simple", usage.Key);
+        Assert.Equal("fallback", usage.DefaultValue);
+    }
+
     private static FlagManager CreateManager(params FlagData[] flags)
     {
         var apiClient = new Helpers.FakeApiClient(new RulesResponse("2026-02-24", flags));

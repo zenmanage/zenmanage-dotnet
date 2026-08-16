@@ -65,7 +65,7 @@ public sealed class FlagManager : IFlagManager
         {
             if (flag.Key == key)
             {
-                await apiClient.ReportUsageAsync(key, GetUsageContext(), cancellationToken: cancellationToken).ConfigureAwait(false);
+                await apiClient.ReportUsageAsync(key, GetUsageContext(), ResolveEffectiveDefault(key, defaultValue), cancellationToken).ConfigureAwait(false);
                 return EvaluateFlag(flag);
             }
         }
@@ -104,6 +104,9 @@ public sealed class FlagManager : IFlagManager
         => context.Type == "anonymous" && context.Name is null && context.Identifier is null && context.GetAttributes().Count == 0
             ? null
             : context;
+
+    private object? ResolveEffectiveDefault(string key, object? defaultValue)
+        => defaultValue ?? (defaults.Has(key) ? defaults.Get(key) : null);
 
     private async Task EnsureRulesLoadedAsync(CancellationToken cancellationToken)
     {
