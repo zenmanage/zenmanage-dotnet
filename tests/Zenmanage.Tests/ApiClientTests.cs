@@ -29,7 +29,7 @@ public sealed class ApiClientTests
 
         Assert.Equal("2026-02-24", response.Version);
         Assert.Equal(2, handler.Requests.Count);
-        Assert.Equal("srv_test", handler.Requests[0].Headers.GetValues("X-API-Key").Single());
+        Assert.Equal("srv_test", handler.Requests[0].Headers.GetValues("X-ZEN-API-KEY").Single());
     }
 
     [Fact]
@@ -43,7 +43,7 @@ public sealed class ApiClientTests
 
         var request = Assert.Single(handler.Requests);
         Assert.Equal("https://api.zenmanage.com/v1/flags/new-dashboard/usage", request.RequestUri!.ToString());
-        Assert.True(request.Headers.Contains("X-ZENMANAGE-CONTEXT"));
+        Assert.True(request.Headers.Contains("X-ZEN-CONTEXT"));
     }
 
     [Fact]
@@ -66,7 +66,7 @@ public sealed class ApiClientTests
         await client.ReportUsageAsync("new-ui", null, true);
 
         var request = Assert.Single(handler.Requests);
-        Assert.Equal("{\"new-ui\":true}", request.Headers.GetValues("X-Default-Value").Single());
+        Assert.Equal("{\"new-ui\":true}", request.Headers.GetValues("X-ZEN-DEFAULT-VALUE").Single());
     }
 
     [Fact]
@@ -78,7 +78,7 @@ public sealed class ApiClientTests
         await client.ReportUsageAsync("num-flag", null, 42);
 
         var request = Assert.Single(handler.Requests);
-        Assert.Equal("{\"num-flag\":42}", request.Headers.GetValues("X-Default-Value").Single());
+        Assert.Equal("{\"num-flag\":42}", request.Headers.GetValues("X-ZEN-DEFAULT-VALUE").Single());
     }
 
     [Fact]
@@ -90,7 +90,7 @@ public sealed class ApiClientTests
         await client.ReportUsageAsync("new-ui", null);
 
         var request = Assert.Single(handler.Requests);
-        Assert.False(request.Headers.Contains("X-Default-Value"));
+        Assert.False(request.Headers.Contains("X-ZEN-DEFAULT-VALUE"));
     }
 
     [Fact]
@@ -103,8 +103,8 @@ public sealed class ApiClientTests
         await client.ReportUsageAsync("num-flag", context, 42);
 
         var request = Assert.Single(handler.Requests);
-        Assert.Equal("{\"num-flag\":42}", request.Headers.GetValues("X-Default-Value").Single());
-        Assert.True(request.Headers.Contains("X-ZENMANAGE-CONTEXT"));
+        Assert.Equal("{\"num-flag\":42}", request.Headers.GetValues("X-ZEN-DEFAULT-VALUE").Single());
+        Assert.True(request.Headers.Contains("X-ZEN-CONTEXT"));
     }
 
     [Fact]
@@ -116,6 +116,6 @@ public sealed class ApiClientTests
         await client.ReportUsageAsync("myCamelCaseFlag", null, true);
 
         var request = Assert.Single(handler.Requests);
-        Assert.Equal("{\"myCamelCaseFlag\":true}", request.Headers.GetValues("X-Default-Value").Single());
+        Assert.Equal("{\"myCamelCaseFlag\":true}", request.Headers.GetValues("X-ZEN-DEFAULT-VALUE").Single());
     }
 }

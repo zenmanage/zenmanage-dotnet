@@ -36,7 +36,7 @@ public class ApiClient
         this.httpClient = httpClient ?? new HttpClient();
         this.httpClient.BaseAddress = new Uri(apiEndpoint, UriKind.Absolute);
         this.httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-        this.httpClient.DefaultRequestHeaders.Add("X-API-Key", environmentToken);
+        this.httpClient.DefaultRequestHeaders.Add("X-ZEN-API-KEY", environmentToken);
         this.httpClient.DefaultRequestHeaders.Add("X-ZEN-CLIENT-AGENT", $"{clientAgent ?? SdkInfo.ClientAgent}/{SdkInfo.Version}");
     }
 
@@ -104,7 +104,7 @@ public class ApiClient
 
             if (context is not null && ShouldSendContext(context))
             {
-                request.Headers.Add("X-ZENMANAGE-CONTEXT", JsonSerializer.Serialize(context.ToData(), Serialization.JsonOptions));
+                request.Headers.Add("X-ZEN-CONTEXT", JsonSerializer.Serialize(context.ToData(), Serialization.JsonOptions));
             }
 
             if (defaultValue is not null)
@@ -112,7 +112,7 @@ public class ApiClient
                 try
                 {
                     var payload = new Dictionary<string, object?> { [key] = defaultValue };
-                    request.Headers.Add("X-Default-Value", JsonSerializer.Serialize(payload, DefaultValueHeaderOptions));
+                    request.Headers.Add("X-ZEN-DEFAULT-VALUE", JsonSerializer.Serialize(payload, DefaultValueHeaderOptions));
                 }
                 catch (Exception exception) when (exception is not OperationCanceledException)
                 {
