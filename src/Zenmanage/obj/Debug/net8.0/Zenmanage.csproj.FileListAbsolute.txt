@@ -1,0 +1,14 @@
+/Users/benkubs/code/zenmanage/sdks/zenmanage-dotnet/src/Zenmanage/bin/Debug/net8.0/Zenmanage.deps.json
+/Users/benkubs/code/zenmanage/sdks/zenmanage-dotnet/src/Zenmanage/bin/Debug/net8.0/Zenmanage.dll
+/Users/benkubs/code/zenmanage/sdks/zenmanage-dotnet/src/Zenmanage/bin/Debug/net8.0/Zenmanage.pdb
+/Users/benkubs/code/zenmanage/sdks/zenmanage-dotnet/src/Zenmanage/bin/Debug/net8.0/Zenmanage.xml
+/Users/benkubs/code/zenmanage/sdks/zenmanage-dotnet/src/Zenmanage/obj/Debug/net8.0/Zenmanage.csproj.AssemblyReference.cache
+/Users/benkubs/code/zenmanage/sdks/zenmanage-dotnet/src/Zenmanage/obj/Debug/net8.0/Zenmanage.GeneratedMSBuildEditorConfig.editorconfig
+/Users/benkubs/code/zenmanage/sdks/zenmanage-dotnet/src/Zenmanage/obj/Debug/net8.0/Zenmanage.AssemblyInfoInputs.cache
+/Users/benkubs/code/zenmanage/sdks/zenmanage-dotnet/src/Zenmanage/obj/Debug/net8.0/Zenmanage.AssemblyInfo.cs
+/Users/benkubs/code/zenmanage/sdks/zenmanage-dotnet/src/Zenmanage/obj/Debug/net8.0/Zenmanage.csproj.CoreCompileInputs.cache
+/Users/benkubs/code/zenmanage/sdks/zenmanage-dotnet/src/Zenmanage/obj/Debug/net8.0/Zenmanage.dll
+/Users/benkubs/code/zenmanage/sdks/zenmanage-dotnet/src/Zenmanage/obj/Debug/net8.0/refint/Zenmanage.dll
+/Users/benkubs/code/zenmanage/sdks/zenmanage-dotnet/src/Zenmanage/obj/Debug/net8.0/Zenmanage.xml
+/Users/benkubs/code/zenmanage/sdks/zenmanage-dotnet/src/Zenmanage/obj/Debug/net8.0/Zenmanage.pdb
+/Users/benkubs/code/zenmanage/sdks/zenmanage-dotnet/src/Zenmanage/obj/Debug/net8.0/ref/Zenmanage.dll
