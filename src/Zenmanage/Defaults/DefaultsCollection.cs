@@ -29,6 +29,8 @@ public sealed class DefaultsCollection
 
     public object? Get(string key) => values.GetValueOrDefault(key);
 
+    public IReadOnlyDictionary<string, object> All() => values;
+
     public static DefaultsCollection FromDictionary(IReadOnlyDictionary<string, object> values)
     {
         var collection = new DefaultsCollection();

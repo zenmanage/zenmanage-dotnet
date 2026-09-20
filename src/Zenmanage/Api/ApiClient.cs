@@ -10,7 +10,7 @@ namespace Zenmanage.Api;
 /// <summary>
 /// HTTP client used to fetch flag rules and report usage.
 /// </summary>
-public class ApiClient
+public class ApiClient : IDisposable
 {
     private const string RulesPath = "/v1/flag-json";
     private const int MaxRetries = 3;
@@ -21,6 +21,7 @@ public class ApiClient
     private static readonly JsonSerializerOptions DefaultValueHeaderOptions = new();
 
     private readonly HttpClient httpClient;
+    private readonly bool ownsHttpClient;
     private readonly ILogger logger;
     private readonly bool enableUsageReporting;
     public ApiClient(
@@ -33,11 +34,25 @@ public class ApiClient
     {
         this.logger = logger;
         this.enableUsageReporting = enableUsageReporting;
+        ownsHttpClient = httpClient is null;
         this.httpClient = httpClient ?? new HttpClient();
         this.httpClient.BaseAddress = new Uri(apiEndpoint, UriKind.Absolute);
         this.httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         this.httpClient.DefaultRequestHeaders.Add("X-ZEN-API-KEY", environmentToken);
         this.httpClient.DefaultRequestHeaders.Add("X-ZEN-CLIENT-AGENT", $"{clientAgent ?? SdkInfo.ClientAgent}/{SdkInfo.Version}");
+    }
+
+    /// <summary>
+    /// Disposes the underlying <see cref="HttpClient"/>, but only when this instance created it
+    /// itself (no external client or factory was supplied) — an externally-supplied client
+    /// remains the caller's responsibility to dispose.
+    /// </summary>
+    public void Dispose()
+    {
+        if (ownsHttpClient)
+        {
+            httpClient.Dispose();
+        }
     }
 
     /// <summary>
@@ -78,6 +93,11 @@ public class ApiClient
 
                 return rules;
             }
+            catch (InvalidRulesException)
+            {
+                // Malformed data is not a transient failure — fail fast rather than retrying.
+                throw;
+            }
             catch (Exception exception) when (exception is not OperationCanceledException)
             {
                 lastError = exception;
@@ -89,7 +109,9 @@ public class ApiClient
     }
 
     /// <summary>
-    /// Reports flag usage. Errors are swallowed because usage reporting is non-critical.
+    /// Reports flag usage, retrying transient failures with exponential backoff. Errors are
+    /// swallowed after the final attempt because usage reporting is non-critical and should
+    /// never break the caller's application.
     /// </summary>
     public virtual async Task ReportUsageAsync(string key, Context? context, object? defaultValue = null, CancellationToken cancellationToken = default)
     {
@@ -98,34 +120,52 @@ public class ApiClient
             return;
         }
 
-        try
+        for (var attempt = 0; attempt < MaxRetries; attempt++)
         {
-            using var request = new HttpRequestMessage(HttpMethod.Post, $"/v1/flags/{Uri.EscapeDataString(key)}/usage");
-
-            if (context is not null && ShouldSendContext(context))
+            try
             {
-                request.Headers.Add("X-ZEN-CONTEXT", JsonSerializer.Serialize(context.ToData(), Serialization.JsonOptions));
-            }
+                using var request = new HttpRequestMessage(HttpMethod.Post, $"/v1/flags/{Uri.EscapeDataString(key)}/usage");
 
-            if (defaultValue is not null)
+                if (context is not null && ShouldSendContext(context))
+                {
+                    request.Headers.Add("X-ZEN-CONTEXT", JsonSerializer.Serialize(context.ToData(), Serialization.JsonOptions));
+                }
+
+                if (defaultValue is not null)
+                {
+                    try
+                    {
+                        var payload = new Dictionary<string, object?> { [key] = defaultValue };
+                        request.Headers.Add("X-ZEN-DEFAULT-VALUE", JsonSerializer.Serialize(payload, DefaultValueHeaderOptions));
+                    }
+                    catch (Exception exception) when (exception is not OperationCanceledException)
+                    {
+                        logger.LogDebug(exception, "Failed to encode usage default value for {Key}", key);
+                    }
+                }
+
+                using var response = await httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
+                if (!response.IsSuccessStatusCode)
+                {
+                    throw new HttpRequestException($"Usage report failed with status {(int)response.StatusCode}");
+                }
+
+                return;
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException)
             {
-                try
+                var nextAttempt = attempt + 1;
+                if (nextAttempt < MaxRetries)
                 {
-                    var payload = new Dictionary<string, object?> { [key] = defaultValue };
-                    request.Headers.Add("X-ZEN-DEFAULT-VALUE", JsonSerializer.Serialize(payload, DefaultValueHeaderOptions));
+                    var delay = RetryDelayMilliseconds * (int)Math.Pow(2, attempt);
+                    logger.LogDebug(exception, "Failed to report flag usage for {Key}, retrying in {Delay}ms (attempt {Attempt}/{MaxRetries})", key, delay, nextAttempt, MaxRetries);
+                    await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
                 }
-                catch (Exception exception) when (exception is not OperationCanceledException)
+                else
                 {
-                    logger.LogDebug(exception, "Failed to encode usage default value for {Key}", key);
+                    logger.LogWarning(exception, "Failed to report flag usage for {Key} after {MaxRetries} attempts", key, MaxRetries);
                 }
             }
-
-            using var response = await httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
-            _ = response;
-        }
-        catch (Exception exception) when (exception is not OperationCanceledException)
-        {
-            logger.LogDebug(exception, "Failed to report flag usage for {Key}", key);
         }
     }
 
@@ -145,6 +185,11 @@ public class ApiClient
         if (metadata?.Data?.Cdn is null || metadata.Data.Path is null)
         {
             throw new InvalidRulesException("API response missing cdn or path fields");
+        }
+
+        if (!metadata.Data.Cdn.StartsWith("https://", StringComparison.Ordinal))
+        {
+            throw new InvalidRulesException("CDN URL must use HTTPS");
         }
 
         return metadata.Data.Cdn + metadata.Data.Path;

@@ -53,15 +53,31 @@ public sealed class FlagManager : IFlagManager
 
     public async Task<IReadOnlyList<Flag>> AllAsync(CancellationToken cancellationToken = default)
     {
-        await EnsureRulesLoadedAsync(cancellationToken).ConfigureAwait(false);
-        return flags?.Select(EvaluateFlag).ToArray() ?? Array.Empty<Flag>();
+        var loadedFlags = await LoadFlagsOrFallBackToDefaultsAsync(cancellationToken).ConfigureAwait(false);
+
+        var evaluatedByKey = new Dictionary<string, Flag>(StringComparer.Ordinal);
+        foreach (var flag in loadedFlags)
+        {
+            var evaluated = EvaluateFlag(flag);
+            evaluatedByKey[evaluated.Key] = evaluated;
+        }
+
+        foreach (var (key, value) in defaults.All())
+        {
+            if (!evaluatedByKey.ContainsKey(key))
+            {
+                evaluatedByKey[key] = CreateFlagFromDefault(key, value);
+            }
+        }
+
+        return evaluatedByKey.Values.ToArray();
     }
 
     public async Task<Flag> SingleAsync(string key, object? defaultValue = null, CancellationToken cancellationToken = default)
     {
-        await EnsureRulesLoadedAsync(cancellationToken).ConfigureAwait(false);
+        var loadedFlags = await LoadFlagsOrFallBackToDefaultsAsync(cancellationToken).ConfigureAwait(false);
 
-        foreach (var flag in flags ?? Array.Empty<Flag>())
+        foreach (var flag in loadedFlags)
         {
             if (flag.Key == key)
             {
@@ -70,17 +86,14 @@ public sealed class FlagManager : IFlagManager
             }
         }
 
-        if (defaultValue is not null)
+        // Flag not found (including when rule-loading failed outright): fall back
+        // to the effective default (inline parameter, prioritized over a
+        // DefaultsCollection entry), if one exists.
+        var effectiveDefault = ResolveEffectiveDefault(key, defaultValue);
+        if (effectiveDefault is not null)
         {
-            await apiClient.ReportUsageAsync(key, GetUsageContext(), defaultValue, cancellationToken).ConfigureAwait(false);
-            return CreateFlagFromDefault(key, defaultValue);
-        }
-
-        if (defaults.Has(key))
-        {
-            var fallbackDefault = defaults.Get(key)!;
-            await apiClient.ReportUsageAsync(key, GetUsageContext(), fallbackDefault, cancellationToken).ConfigureAwait(false);
-            return CreateFlagFromDefault(key, fallbackDefault);
+            await apiClient.ReportUsageAsync(key, GetUsageContext(), effectiveDefault, cancellationToken).ConfigureAwait(false);
+            return CreateFlagFromDefault(key, effectiveDefault);
         }
 
         throw new EvaluationException($"Flag not found: {key}");
@@ -107,6 +120,24 @@ public sealed class FlagManager : IFlagManager
 
     private object? ResolveEffectiveDefault(string key, object? defaultValue)
         => defaultValue ?? (defaults.Has(key) ? defaults.Get(key) : null);
+
+    /// <summary>
+    /// Loads the current flag set, falling back to an empty list (so callers fall
+    /// through to their own defaults handling) if rule-loading fails outright.
+    /// </summary>
+    private async Task<IReadOnlyList<Flag>> LoadFlagsOrFallBackToDefaultsAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await EnsureRulesLoadedAsync(cancellationToken).ConfigureAwait(false);
+            return flags ?? Array.Empty<Flag>();
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            logger.LogWarning(exception, "Failed to load rules, falling back to configured defaults");
+            return Array.Empty<Flag>();
+        }
+    }
 
     private async Task EnsureRulesLoadedAsync(CancellationToken cancellationToken)
     {
@@ -138,17 +169,9 @@ public sealed class FlagManager : IFlagManager
 
     private async Task LoadRulesFromApiAsync(CancellationToken cancellationToken)
     {
-        try
-        {
-            var response = await apiClient.GetRulesAsync(cancellationToken).ConfigureAwait(false);
-            flags = response.Flags.Select(Flag.FromData).ToArray();
-            await cache.SetAsync(CacheKey, JsonSerializer.Serialize(response, Serialization.JsonOptions), cacheTtl, cancellationToken).ConfigureAwait(false);
-        }
-        catch
-        {
-            flags = Array.Empty<Flag>();
-            throw;
-        }
+        var response = await apiClient.GetRulesAsync(cancellationToken).ConfigureAwait(false);
+        flags = response.Flags.Select(Flag.FromData).ToArray();
+        await cache.SetAsync(CacheKey, JsonSerializer.Serialize(response, Serialization.JsonOptions), cacheTtl, cancellationToken).ConfigureAwait(false);
     }
 
     private Flag EvaluateFlag(Flag flag)

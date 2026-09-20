@@ -98,7 +98,7 @@ dotnet nuget push ./artifacts/Zenmanage.<version>.snupkg \
 
 Recommended GitHub Actions flow:
 
-1. Trigger on version tags like `v0.1.0`.
+1. Trigger on version tags like `v1.0.0`.
 2. Install .NET 8 SDK.
 3. Restore, build, test, and collect coverage.
 4. Pack in `Release`.

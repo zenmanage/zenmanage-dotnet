@@ -179,6 +179,7 @@ See [examples/README.md](examples/README.md) for the sample set:
 - `caching.cs`
 - `ab-testing.cs`
 - `percentage-rollouts.cs`
+- `aspnet-core.cs`
 
 ## Publishing
 

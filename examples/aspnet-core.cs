@@ -40,12 +40,12 @@ app.UseAuthentication();
 app.UseZenmanage(ctx =>
 {
     var userId = ctx.User.Identity?.Name ?? "anonymous";
-    var context = Context.Single(userId);
+    var context = Context.Single("user", userId);
 
     // Optionally enrich with claims or request attributes.
     if (ctx.User.IsInRole("beta-tester"))
     {
-        context.AddAttribute("role", "beta-tester");
+        context.AddAttribute(new Attribute("role", new[] { "beta-tester" }));
     }
 
     return context;

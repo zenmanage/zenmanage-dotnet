@@ -216,6 +216,74 @@ public sealed class FlagManagerTests
         Assert.Equal("fallback", usage.DefaultValue);
     }
 
+    [Fact]
+    public async Task AllAsync_FallsBackToDefaults_WhenRuleLoadingFails()
+    {
+        var defaults = new DefaultsCollection().Add("missing-flag", true);
+        var manager = new FlagManager(new Helpers.FailingApiClient(), new NullCache(), new RuleEngine(), 60, NullLogger.Instance)
+            .WithDefaults(defaults);
+
+        var flags = await manager.AllAsync();
+
+        var flag = Assert.Single(flags);
+        Assert.Equal("missing-flag", flag.Key);
+        Assert.True(flag.IsEnabled());
+    }
+
+    [Fact]
+    public async Task SingleAsync_FallsBackToCollectionDefault_WhenRuleLoadingFails()
+    {
+        var defaults = new DefaultsCollection().Add("missing-flag", "fallback");
+        var manager = new FlagManager(new Helpers.FailingApiClient(), new NullCache(), new RuleEngine(), 60, NullLogger.Instance)
+            .WithDefaults(defaults);
+
+        var flag = await manager.SingleAsync("missing-flag");
+
+        Assert.Equal("fallback", flag.AsString());
+    }
+
+    [Fact]
+    public async Task SingleAsync_FallsBackToInlineDefault_WhenRuleLoadingFails()
+    {
+        var manager = new FlagManager(new Helpers.FailingApiClient(), new NullCache(), new RuleEngine(), 60, NullLogger.Instance);
+
+        var flag = await manager.SingleAsync("missing-flag", true);
+
+        Assert.True(flag.IsEnabled());
+    }
+
+    [Fact]
+    public async Task SingleAsync_ThrowsEvaluationException_WhenRuleLoadingFailsAndNoDefaultExists()
+    {
+        var manager = new FlagManager(new Helpers.FailingApiClient(), new NullCache(), new RuleEngine(), 60, NullLogger.Instance);
+
+        var exception = await Assert.ThrowsAsync<EvaluationException>(() => manager.SingleAsync("missing-flag"));
+
+        Assert.Equal("Flag not found: missing-flag", exception.Message);
+    }
+
+    [Fact]
+    public async Task RefreshRulesAsync_PropagatesFailure_RatherThanFallingBack()
+    {
+        var manager = new FlagManager(new Helpers.FailingApiClient(), new NullCache(), new RuleEngine(), 60, NullLogger.Instance);
+
+        await Assert.ThrowsAsync<FetchRulesException>(() => manager.RefreshRulesAsync());
+    }
+
+    [Fact]
+    public async Task AllAsync_MergesDefaultsCollection_ForKeysMissingFromLoadedFlags()
+    {
+        var flagData = new FlagData("1", FlagType.Boolean, "loaded-flag", "Loaded Flag", TestData.BooleanTarget(true), Array.Empty<Rule>());
+        var defaults = new DefaultsCollection().Add("loaded-flag", false).Add("only-in-defaults", "fallback");
+        var manager = CreateManager(flagData).WithDefaults(defaults);
+
+        var flags = await manager.AllAsync();
+
+        Assert.Equal(2, flags.Count);
+        Assert.True(flags.Single(f => f.Key == "loaded-flag").IsEnabled());
+        Assert.Equal("fallback", flags.Single(f => f.Key == "only-in-defaults").AsString());
+    }
+
     private static FlagManager CreateManager(params FlagData[] flags)
     {
         var apiClient = new Helpers.FakeApiClient(new RulesResponse("2026-02-24", flags));
