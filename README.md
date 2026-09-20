@@ -180,7 +180,3 @@ See [examples/README.md](examples/README.md) for the sample set:
 - `ab-testing.cs`
 - `percentage-rollouts.cs`
 - `aspnet-core.cs`
-
-## Publishing
-
-See [docs/NUGET_PUBLISHING_GUIDE.md](docs/NUGET_PUBLISHING_GUIDE.md) for the release checklist and NuGet publication steps.
