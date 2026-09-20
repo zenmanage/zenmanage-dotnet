@@ -1,0 +1,39 @@
+# Build output
+[Bb]in/
+[Oo]bj/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Rider / JetBrains
+.idea/
+*.sln.iml
+
+# VS Code
+.vscode/
+!.vscode/extensions.json
+
+# Test results / coverage
+TestResults/
+*.trx
+coverage.cobertura.xml
+coverage.opencover.xml
+
+# NuGet
+*.nupkg
+*.snupkg
+**/packages/*
+!**/packages/build/
+*.nuget.props
+*.nuget.targets
+
+# Build artifacts output directory used by CI (dotnet pack -o artifacts)
+/artifacts/
+
+# OS files
+.DS_Store
+Thumbs.db
