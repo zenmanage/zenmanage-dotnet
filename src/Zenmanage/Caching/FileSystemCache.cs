@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Zenmanage.Exceptions;
 
 namespace Zenmanage.Caching;
 
@@ -14,7 +15,7 @@ public sealed class FileSystemCache : IZenmanageCache
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(directory);
         this.directory = directory;
-        Directory.CreateDirectory(directory);
+        EnsureDirectoryExists();
     }
 
     public async Task<string?> GetAsync(string key, CancellationToken cancellationToken = default)
@@ -25,8 +26,19 @@ public sealed class FileSystemCache : IZenmanageCache
             return null;
         }
 
-        await using var stream = File.OpenRead(path);
-        var item = await JsonSerializer.DeserializeAsync<CacheItem>(stream, JsonOptions, cancellationToken).ConfigureAwait(false);
+        CacheItem? item;
+        try
+        {
+            await using var stream = File.OpenRead(path);
+            item = await JsonSerializer.DeserializeAsync<CacheItem>(stream, JsonOptions, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or JsonException)
+        {
+            // A corrupted or unreadable cache entry is treated as a cache miss, not a hard
+            // failure — the caller falls back to fetching fresh rules from the API.
+            return null;
+        }
+
         if (item is null)
         {
             return null;
@@ -43,11 +55,30 @@ public sealed class FileSystemCache : IZenmanageCache
 
     public async Task SetAsync(string key, string value, int ttlSeconds, CancellationToken cancellationToken = default)
     {
-        Directory.CreateDirectory(directory);
-        var path = GetPath(key);
-        DateTimeOffset? expiresAt = ttlSeconds <= 0 ? null : DateTimeOffset.UtcNow.AddSeconds(ttlSeconds);
-        await using var stream = File.Create(path);
-        await JsonSerializer.SerializeAsync(stream, new CacheItem(value, expiresAt), JsonOptions, cancellationToken).ConfigureAwait(false);
+        try
+        {
+            EnsureDirectoryExists();
+            var path = GetPath(key);
+            DateTimeOffset? expiresAt = ttlSeconds <= 0 ? null : DateTimeOffset.UtcNow.AddSeconds(ttlSeconds);
+            await using var stream = File.Create(path);
+            await JsonSerializer.SerializeAsync(stream, new CacheItem(value, expiresAt), JsonOptions, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            throw new CacheException($"Failed to write cache file for key: {key}", exception);
+        }
+    }
+
+    private void EnsureDirectoryExists()
+    {
+        try
+        {
+            Directory.CreateDirectory(directory);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            throw new CacheException($"Failed to create cache directory: {directory}", exception);
+        }
     }
 
     public async Task<bool> HasAsync(string key, CancellationToken cancellationToken = default)

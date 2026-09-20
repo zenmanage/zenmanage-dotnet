@@ -1,4 +1,6 @@
+using System.Globalization;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Zenmanage.Contexting;
 
 namespace Zenmanage.Rules;
@@ -46,32 +48,52 @@ public sealed class RuleEngine
         var attribute = context.GetAttribute(clause.Attribute);
         if (attribute is null)
         {
-            return clause.Operator is "isnull" or "notequal" or "notin" or "notcontains" or "notstartswith" or "notendswith";
+            return clause.Operator is "isnull" or "notequal" or "notin" or "notcontains" or "notstartswith" or "notendswith" or "notregex";
         }
 
         var values = attribute.GetValues();
-        var clauseValue = ToAttributeClauseValues(clause.Value);
 
-        return clause.Operator switch
+        if (clause.Operator is "isnull")
         {
-            "equal" => EvaluateEquals(values, clauseValue),
-            "notequal" => !EvaluateEquals(values, clauseValue),
-            "contains" => EvaluateContains(values, clauseValue),
-            "notcontains" => !EvaluateContains(values, clauseValue),
-            "in" => EvaluateIn(values, clauseValue),
-            "notin" => !EvaluateIn(values, clauseValue),
-            "startswith" => EvaluateStartsWith(values, clauseValue),
-            "notstartswith" => !EvaluateStartsWith(values, clauseValue),
-            "endswith" => EvaluateEndsWith(values, clauseValue),
-            "notendswith" => !EvaluateEndsWith(values, clauseValue),
-            "gt" => EvaluateGreaterThan(values, clauseValue),
-            "gte" => EvaluateGreaterThanOrEqual(values, clauseValue),
-            "lt" => EvaluateLessThan(values, clauseValue),
-            "lte" => EvaluateLessThanOrEqual(values, clauseValue),
-            "isnull" => values.All(string.IsNullOrEmpty),
-            "notnull" => values.Any(v => !string.IsNullOrEmpty(v)),
-            _ => false
-        };
+            return values.All(string.IsNullOrEmpty);
+        }
+
+        if (clause.Operator is "notnull")
+        {
+            return values.Any(v => !string.IsNullOrEmpty(v));
+        }
+
+        var clauseValues = ToAttributeClauseValues(clause.Value);
+        return EvaluateAttributeOperator(clause.Operator, values, clauseValues);
+    }
+
+    /// <summary>
+    /// Evaluates a non-null/not-null attribute operator against every (attribute value, clause
+    /// value) combination. Mirrors the PHP SDK's AttributeConditionEvaluator:
+    /// - "in"/"not_in" treat <paramref name="clauseValues"/> as a single list and, for a given
+    ///   attribute value, ask whether it is (or is not) a member of that list; the overall result
+    ///   is true if ANY attribute value satisfies that per-value check.
+    /// - Every other negated operator (not_equal, not_contains, ...) is true only if NO
+    ///   (attribute value, clause value) pair satisfies the positive comparison — i.e. negation is
+    ///   applied to the aggregate match, not to each pair independently.
+    /// </summary>
+    private static bool EvaluateAttributeOperator(string @operator, IReadOnlyList<string> attributeValues, IReadOnlyList<string> clauseValues)
+    {
+        var (baseOperator, negate) = SplitNegation(@operator);
+
+        if (baseOperator is "in")
+        {
+            var isIn = attributeValues.Any(clauseValues.Contains);
+            return negate ? attributeValues.Any(value => !clauseValues.Contains(value)) : isIn;
+        }
+
+        if (clauseValues.Count == 0)
+        {
+            return false;
+        }
+
+        var anyPositiveMatch = attributeValues.Any(value => clauseValues.Any(clauseValue => MatchesSingle(baseOperator, value, clauseValue)));
+        return negate ? !anyPositiveMatch : anyPositiveMatch;
     }
 
     private bool EvaluateContextClause(RuleCondition clause, Context context)
@@ -97,26 +119,34 @@ public sealed class RuleEngine
             return false;
         }
 
-        var values = new[] { context.Identifier };
+        return EvaluateContextOperator(clause.Operator, context.Identifier, matchingTargets);
+    }
 
-        return clause.Operator switch
+    /// <summary>
+    /// Evaluates a context/segment operator by checking the context identifier against every
+    /// matching target and returning true if ANY target satisfies the (possibly negated) operator.
+    /// Mirrors the PHP SDK's ContextConditionEvaluator/SegmentConditionEvaluator, which evaluate
+    /// each candidate target independently (negation included) and OR the results — unlike
+    /// attribute clauses, there is no "all pairs must fail" aggregation here.
+    /// </summary>
+    private static bool EvaluateContextOperator(string @operator, string identifier, IReadOnlyList<string> targetIdentifiers)
+    {
+        if (targetIdentifiers.Count == 0)
         {
-            "equal" => EvaluateEquals(values, matchingTargets),
-            "notequal" => !EvaluateEquals(values, matchingTargets),
-            "contains" => EvaluateContains(values, matchingTargets),
-            "notcontains" => !EvaluateContains(values, matchingTargets),
-            "in" => EvaluateIn(values, matchingTargets),
-            "notin" => !EvaluateIn(values, matchingTargets),
-            "startswith" => EvaluateStartsWith(values, matchingTargets),
-            "notstartswith" => !EvaluateStartsWith(values, matchingTargets),
-            "endswith" => EvaluateEndsWith(values, matchingTargets),
-            "notendswith" => !EvaluateEndsWith(values, matchingTargets),
-            "gt" => EvaluateGreaterThan(values, matchingTargets),
-            "gte" => EvaluateGreaterThanOrEqual(values, matchingTargets),
-            "lt" => EvaluateLessThan(values, matchingTargets),
-            "lte" => EvaluateLessThanOrEqual(values, matchingTargets),
-            _ => false
-        };
+            return false;
+        }
+
+        var (baseOperator, negate) = SplitNegation(@operator);
+
+        if (baseOperator is "in")
+        {
+            var isIn = targetIdentifiers.Contains(identifier);
+            return negate ? !isIn : isIn;
+        }
+
+        return negate
+            ? targetIdentifiers.Any(target => !MatchesSingle(baseOperator, identifier, target))
+            : targetIdentifiers.Any(target => MatchesSingle(baseOperator, identifier, target));
     }
 
     private static IReadOnlyList<RuleContextTarget> ToContextTargets(object? value)
@@ -225,48 +255,81 @@ public sealed class RuleEngine
         };
     }
 
-    private static bool EvaluateEquals(IReadOnlyList<string> values, IReadOnlyList<string> clauseValues)
-        => clauseValues.Count > 0 && values.Any(value => value == clauseValues[0]);
+    /// <summary>
+    /// Splits an operator token into its positive base form and whether it was negated
+    /// (prefixed with "not"), e.g. "notcontains" → ("contains", true).
+    /// </summary>
+    private static (string BaseOperator, bool Negate) SplitNegation(string @operator)
+        => @operator.StartsWith("not", StringComparison.Ordinal) && @operator.Length > 3
+            ? (@operator["not".Length..], true)
+            : (@operator, false);
 
-    private static bool EvaluateContains(IReadOnlyList<string> values, IReadOnlyList<string> clauseValues)
-        => clauseValues.Count > 0 && values.Any(value => value.Contains(clauseValues[0], StringComparison.Ordinal));
-
-    private static bool EvaluateIn(IReadOnlyList<string> values, IReadOnlyList<string> clauseValues)
-        => clauseValues.Count > 0 && values.Any(value => clauseValues.Contains(value));
-
-    private static bool EvaluateStartsWith(IReadOnlyList<string> values, IReadOnlyList<string> clauseValues)
-        => clauseValues.Count > 0 && values.Any(value => value.StartsWith(clauseValues[0], StringComparison.Ordinal));
-
-    private static bool EvaluateEndsWith(IReadOnlyList<string> values, IReadOnlyList<string> clauseValues)
-        => clauseValues.Count > 0 && values.Any(value => value.EndsWith(clauseValues[0], StringComparison.Ordinal));
-
-    private static bool EvaluateGreaterThan(IReadOnlyList<string> values, IReadOnlyList<string> clauseValues)
-        => CompareNumeric(values, clauseValues, (left, right) => left > right);
-
-    private static bool EvaluateGreaterThanOrEqual(IReadOnlyList<string> values, IReadOnlyList<string> clauseValues)
-        => CompareNumeric(values, clauseValues, (left, right) => left >= right);
-
-    private static bool EvaluateLessThan(IReadOnlyList<string> values, IReadOnlyList<string> clauseValues)
-        => CompareNumeric(values, clauseValues, (left, right) => left < right);
-
-    private static bool EvaluateLessThanOrEqual(IReadOnlyList<string> values, IReadOnlyList<string> clauseValues)
-        => CompareNumeric(values, clauseValues, (left, right) => left <= right);
-
-    private static bool CompareNumeric(IReadOnlyList<string> values, IReadOnlyList<string> clauseValues, Func<double, double, bool> comparison)
+    /// <summary>Evaluates one positive (non-negated, non-list) operator against a single value pair.</summary>
+    private static bool MatchesSingle(string baseOperator, string actual, string expected) => baseOperator switch
     {
-        if (clauseValues.Count == 0 || !double.TryParse(clauseValues[0], System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var right))
+        "equal" => actual == expected,
+        "contains" => actual.Contains(expected, StringComparison.Ordinal),
+        "startswith" => actual.StartsWith(expected, StringComparison.Ordinal),
+        "endswith" => actual.EndsWith(expected, StringComparison.Ordinal),
+        "gt" => CompareNumeric(actual, expected, (left, right) => left > right),
+        "gte" => CompareNumeric(actual, expected, (left, right) => left >= right),
+        "lt" => CompareNumeric(actual, expected, (left, right) => left < right),
+        "lte" => CompareNumeric(actual, expected, (left, right) => left <= right),
+        "regex" => MatchesRegex(actual, expected),
+        _ => false
+    };
+
+    private static bool CompareNumeric(string actual, string expected, Func<double, double, bool> comparison)
+        => double.TryParse(actual, NumberStyles.Any, CultureInfo.InvariantCulture, out var left)
+            && double.TryParse(expected, NumberStyles.Any, CultureInfo.InvariantCulture, out var right)
+            && comparison(left, right);
+
+    /// <summary>
+    /// Matches a value against a regex pattern, accepting either a raw .NET pattern or a
+    /// PCRE-style delimited pattern (e.g. "/^foo$/i") as produced by the reference PHP SDK's
+    /// preg_match-based implementation. Invalid patterns fail closed (return false), matching PHP.
+    /// </summary>
+    private static bool MatchesRegex(string actual, string pattern)
+    {
+        try
+        {
+            var (body, options) = ParsePattern(pattern);
+            return Regex.IsMatch(actual, body, options);
+        }
+        catch (ArgumentException)
         {
             return false;
         }
+    }
 
-        foreach (var value in values)
+    private static (string Pattern, RegexOptions Options) ParsePattern(string pattern)
+    {
+        if (pattern.Length < 2 || char.IsLetterOrDigit(pattern[0]) || pattern[0] == '\\')
         {
-            if (double.TryParse(value, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var left) && comparison(left, right))
-            {
-                return true;
-            }
+            return (pattern, RegexOptions.None);
         }
 
-        return false;
+        var delimiter = pattern[0];
+        var closingIndex = pattern.LastIndexOf(delimiter);
+        if (closingIndex <= 0)
+        {
+            return (pattern, RegexOptions.None);
+        }
+
+        var body = pattern[1..closingIndex];
+        var options = RegexOptions.None;
+        foreach (var flag in pattern[(closingIndex + 1)..])
+        {
+            options |= flag switch
+            {
+                'i' => RegexOptions.IgnoreCase,
+                'm' => RegexOptions.Multiline,
+                's' => RegexOptions.Singleline,
+                'x' => RegexOptions.IgnorePatternWhitespace,
+                _ => RegexOptions.None
+            };
+        }
+
+        return (body, options);
     }
 }

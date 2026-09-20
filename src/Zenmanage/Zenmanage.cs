@@ -14,6 +14,7 @@ namespace Zenmanage;
 /// </summary>
 public sealed class Zenmanage : IZenmanageClient
 {
+    private readonly ApiClient apiClient;
     private readonly IFlagManager flagManager;
 
     public Zenmanage(Config config)
@@ -21,7 +22,7 @@ public sealed class Zenmanage : IZenmanageClient
         var logger = config.Logger ?? NullLogger.Instance;
         var cache = CreateCache(config);
         var httpClient = config.HttpClientFactory?.Invoke();
-        var apiClient = new ApiClient(config.EnvironmentToken, config.ApiEndpoint, logger, config.EnableUsageReporting, httpClient, config.ClientAgent);
+        apiClient = new ApiClient(config.EnvironmentToken, config.ApiEndpoint, logger, config.EnableUsageReporting, httpClient, config.ClientAgent);
         var ruleEngine = new RuleEngine();
 
         flagManager = new FlagManager(apiClient, cache, ruleEngine, config.CacheTtl, logger);
@@ -31,6 +32,8 @@ public sealed class Zenmanage : IZenmanageClient
     /// Returns the flag manager used for retrieving and evaluating flags.
     /// </summary>
     public IFlagManager Flags() => flagManager;
+
+    public void Dispose() => apiClient.Dispose();
 
     private static IZenmanageCache CreateCache(Config config)
     {

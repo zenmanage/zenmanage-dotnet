@@ -39,7 +39,7 @@ jobs:
         run: dotnet test tests/Zenmanage.Tests/Zenmanage.Tests.csproj -c Release --no-build --logger "trx;LogFileName=test-results.trx" --collect:"XPlat Code Coverage"
 
       - name: Pack (Validation)
-        run: dotnet pack src/Zenmanage/Zenmanage.csproj -c Release --no-build -o artifacts
+        run: dotnet pack Zenmanage.sln -c Release --no-build -o artifacts
 
       - name: Upload Test Results
         if: always()

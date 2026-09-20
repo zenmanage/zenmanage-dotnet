@@ -168,4 +168,68 @@ public sealed class RuleEngineTests
         var context = new Context("user", identifier: "u-1");
         Assert.NotNull(engine.Evaluate(new[] { rule }, context));
     }
+
+    [Theory]
+    [InlineData("^foo", "foobar", true)]
+    [InlineData("^foo", "barfoo", false)]
+    [InlineData("/^foo$/i", "FOO", true)]
+    [InlineData("/^foo$/i", "foobar", false)]
+    public void Evaluate_RegexOperator_Works(string pattern, string attributeValue, bool expected)
+    {
+        var rule = TestData.Rule("code", "regex", pattern, true);
+        var context = new Context("user").AddAttribute(new ContextAttribute("code", new[] { attributeValue }));
+
+        var result = engine.Evaluate(new[] { rule }, context);
+
+        Assert.Equal(expected, result is not null);
+    }
+
+    [Fact]
+    public void Evaluate_RegexOperator_FailsClosed_OnInvalidPattern()
+    {
+        var rule = TestData.Rule("code", "regex", "(unterminated", true);
+        var context = new Context("user").AddAttribute(new ContextAttribute("code", new[] { "anything" }));
+
+        Assert.Null(engine.Evaluate(new[] { rule }, context));
+    }
+
+    [Fact]
+    public void Evaluate_Equal_MatchesAnyOfMultipleConditionValues()
+    {
+        // Only the second condition value ("CA") matches the attribute — with only the first
+        // condition value considered, this would incorrectly fail to match.
+        var rule = TestData.Rule("country", "equal", new[] { "US", "CA" }, true);
+        var context = new Context("user").AddAttribute(new ContextAttribute("country", new[] { "CA" }));
+
+        Assert.NotNull(engine.Evaluate(new[] { rule }, context));
+    }
+
+    [Fact]
+    public void Evaluate_NotIn_TrueWhenAtLeastOneAttributeValueIsOutsideList()
+    {
+        var rule = TestData.Rule("tags", "notin", new[] { "alpha" }, true);
+        var context = new Context("user").AddAttribute(new ContextAttribute("tags", new[] { "alpha", "beta" }));
+
+        Assert.NotNull(engine.Evaluate(new[] { rule }, context));
+    }
+
+    [Fact]
+    public void Evaluate_NotIn_FalseWhenEveryAttributeValueIsInList()
+    {
+        var rule = TestData.Rule("tags", "notin", new[] { "alpha", "beta" }, true);
+        var context = new Context("user").AddAttribute(new ContextAttribute("tags", new[] { "alpha", "beta" }));
+
+        Assert.Null(engine.Evaluate(new[] { rule }, context));
+    }
+
+    [Fact]
+    public void Evaluate_NotContains_FalseWhenAnyAttributeValueMatchesAnyConditionValue()
+    {
+        // "beta" contains "bet", so the aggregate positive match exists and notcontains is false —
+        // even though no attribute value contains "gamma".
+        var rule = TestData.Rule("tags", "notcontains", new[] { "gamma", "bet" }, true);
+        var context = new Context("user").AddAttribute(new ContextAttribute("tags", new[] { "alpha", "beta" }));
+
+        Assert.Null(engine.Evaluate(new[] { rule }, context));
+    }
 }
