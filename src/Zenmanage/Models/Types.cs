@@ -7,7 +7,14 @@ public enum FlagType
 {
     Boolean,
     String,
-    Number
+    Number,
+
+    /// <summary>
+    /// A flag type this SDK version does not recognize (for example, a type introduced
+    /// on the wire after this SDK shipped). Evaluation treats flags of this type like a
+    /// missing flag, falling back to the caller's default rather than throwing.
+    /// </summary>
+    Unknown
 }
 
 public sealed record ContextValueData(string Value);

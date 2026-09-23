@@ -14,6 +14,7 @@ internal static class Serialization
         Converters =
         {
             new RuleConditionConverter(),
+            new FlagTypeConverter(),
             new JsonStringEnumConverter(JsonNamingPolicy.CamelCase, allowIntegerValues: false)
         }
     };

@@ -5,9 +5,9 @@
     <RootNamespace>Zenmanage</RootNamespace>
     <Description>Add feature flags to your .NET applications with local rule evaluation, targeting, rollouts, and safe defaults.</Description>
     <PackageId>Zenmanage</PackageId>
-    <Version>1.0.0</Version>
-    <AssemblyVersion>1.0.0.0</AssemblyVersion>
-    <FileVersion>1.0.0.0</FileVersion>
+    <Version>1.0.1</Version>
+    <AssemblyVersion>1.0.1.0</AssemblyVersion>
+    <FileVersion>1.0.1.0</FileVersion>
     <IsPackable>true</IsPackable>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>

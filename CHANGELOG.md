@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- A flag whose `type` this SDK version doesn't recognize (e.g. a future `json` flag type) no longer throws and drops the *entire* rules payload — it now parses as `FlagType.Unknown` and is treated like a missing flag, falling back to the caller's default while the rest of the flags evaluate normally.
+
 ## [1.0.0] - 2026-09-20
 
 First public release.
