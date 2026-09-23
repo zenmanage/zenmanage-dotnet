@@ -58,6 +58,14 @@ public sealed class FlagManager : IFlagManager
         var evaluatedByKey = new Dictionary<string, Flag>(StringComparer.Ordinal);
         foreach (var flag in loadedFlags)
         {
+            // A flag of a type this SDK version does not recognize (e.g. one introduced
+            // on the wire after this SDK shipped) is treated like a missing flag: it's
+            // omitted here so a matching DefaultsCollection entry can fill it in below.
+            if (flag.Type == FlagType.Unknown)
+            {
+                continue;
+            }
+
             var evaluated = EvaluateFlag(flag);
             evaluatedByKey[evaluated.Key] = evaluated;
         }
@@ -79,16 +87,20 @@ public sealed class FlagManager : IFlagManager
 
         foreach (var flag in loadedFlags)
         {
-            if (flag.Key == key)
+            // A flag of a type this SDK version does not recognize is treated like a
+            // missing flag rather than evaluated, so it falls through to the caller's
+            // default below instead of returning a bogus/empty value.
+            if (flag.Key == key && flag.Type != FlagType.Unknown)
             {
                 await apiClient.ReportUsageAsync(key, GetUsageContext(), ResolveEffectiveDefault(key, defaultValue), cancellationToken).ConfigureAwait(false);
                 return EvaluateFlag(flag);
             }
         }
 
-        // Flag not found (including when rule-loading failed outright): fall back
-        // to the effective default (inline parameter, prioritized over a
-        // DefaultsCollection entry), if one exists.
+        // Flag not found (including when rule-loading failed outright, or the flag's
+        // type is unrecognized by this SDK version): fall back to the effective
+        // default (inline parameter, prioritized over a DefaultsCollection entry), if
+        // one exists.
         var effectiveDefault = ResolveEffectiveDefault(key, defaultValue);
         if (effectiveDefault is not null)
         {
@@ -155,6 +167,7 @@ public sealed class FlagManager : IFlagManager
                 if (response?.Flags is not null)
                 {
                     flags = response.Flags.Select(Flag.FromData).ToArray();
+                    LogUnknownFlagTypes(flags);
                     return;
                 }
             }
@@ -170,8 +183,28 @@ public sealed class FlagManager : IFlagManager
     private async Task LoadRulesFromApiAsync(CancellationToken cancellationToken)
     {
         var response = await apiClient.GetRulesAsync(cancellationToken).ConfigureAwait(false);
-        flags = response.Flags.Select(Flag.FromData).ToArray();
+        flags = response.Flags?.Select(Flag.FromData).ToArray() ?? [];
+        LogUnknownFlagTypes(flags);
         await cache.SetAsync(CacheKey, JsonSerializer.Serialize(response, Serialization.JsonOptions), cacheTtl, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Logs once per loaded flag set (rather than silently swallowing it) when the
+    /// payload contains a flag whose type this SDK version does not recognize, e.g. a
+    /// type introduced on the wire after this SDK shipped. Those flags are treated as
+    /// missing during evaluation instead of throwing.
+    /// </summary>
+    private void LogUnknownFlagTypes(IReadOnlyList<Flag> loadedFlags)
+    {
+        foreach (var flag in loadedFlags)
+        {
+            if (flag.Type == FlagType.Unknown)
+            {
+                logger.LogWarning(
+                    "Flag '{Key}' has a type this SDK version does not recognize; treating it as missing and falling back to the caller's default",
+                    flag.Key);
+            }
+        }
     }
 
     private Flag EvaluateFlag(Flag flag)
