@@ -183,7 +183,7 @@ public sealed class FlagManager : IFlagManager
     private async Task LoadRulesFromApiAsync(CancellationToken cancellationToken)
     {
         var response = await apiClient.GetRulesAsync(cancellationToken).ConfigureAwait(false);
-        flags = response.Flags.Select(Flag.FromData).ToArray();
+        flags = response.Flags?.Select(Flag.FromData).ToArray() ?? [];
         LogUnknownFlagTypes(flags);
         await cache.SetAsync(CacheKey, JsonSerializer.Serialize(response, Serialization.JsonOptions), cacheTtl, cancellationToken).ConfigureAwait(false);
     }

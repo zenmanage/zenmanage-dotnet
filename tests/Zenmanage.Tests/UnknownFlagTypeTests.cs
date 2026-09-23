@@ -1,4 +1,5 @@
 using System.Net;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Zenmanage.Api;
 using Zenmanage.Caching;
@@ -99,7 +100,19 @@ public sealed class UnknownFlagTypeTests
         Assert.DoesNotContain(flags, f => f.Key == "json-flag");
     }
 
-    private static FlagManager CreateManagerWithLiveJsonPayload()
+    [Fact]
+    public async Task AllAsync_WithUnknownFlagType_LogsWarningOnce()
+    {
+        var logger = new TestLogger();
+        var manager = CreateManagerWithLiveJsonPayload(logger);
+
+        await manager.AllAsync();
+
+        var warnings = logger.Entries.Where(e => e.Level == LogLevel.Warning && e.Message.Contains("json-flag")).ToList();
+        Assert.Single(warnings);
+    }
+
+    private static FlagManager CreateManagerWithLiveJsonPayload(ILogger? logger = null)
     {
         var handler = new TestHttpMessageHandler(request => request.RequestUri!.ToString() switch
         {
@@ -111,6 +124,6 @@ public sealed class UnknownFlagTypeTests
         });
 
         var apiClient = new ApiClient("srv_test", "https://api.zenmanage.com", NullLogger.Instance, false, new HttpClient(handler));
-        return new FlagManager(apiClient, new NullCache(), new RuleEngine(), 60, NullLogger.Instance);
+        return new FlagManager(apiClient, new NullCache(), new RuleEngine(), 60, logger ?? NullLogger.Instance);
     }
 }
