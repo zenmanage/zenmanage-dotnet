@@ -7,9 +7,9 @@ namespace Zenmanage.Internal;
 /// Custom JSON converter for <see cref="FlagType"/>. The default
 /// <see cref="JsonStringEnumConverter"/> throws on any string it doesn't recognize, which
 /// would fail the entire rules payload if the API ever serves a flag type this SDK
-/// version predates (for example, a "json" flag type). This converter maps an
-/// unrecognized type to <see cref="FlagType.Unknown"/> instead, so the rest of the
-/// payload still parses; evaluation then treats that flag like a missing one.
+/// version predates. This converter maps an unrecognized type to
+/// <see cref="FlagType.Unknown"/> instead, so the rest of the payload still parses;
+/// evaluation then treats that flag like a missing one.
 /// </summary>
 internal sealed class FlagTypeConverter : JsonConverter<FlagType>
 {
@@ -25,6 +25,7 @@ internal sealed class FlagTypeConverter : JsonConverter<FlagType>
             "boolean" => FlagType.Boolean,
             "string" => FlagType.String,
             "number" => FlagType.Number,
+            "json" => FlagType.Json,
             _ => FlagType.Unknown
         };
     }
@@ -36,6 +37,7 @@ internal sealed class FlagTypeConverter : JsonConverter<FlagType>
             FlagType.Boolean => "boolean",
             FlagType.String => "string",
             FlagType.Number => "number",
+            FlagType.Json => "json",
             _ => "unknown"
         });
     }

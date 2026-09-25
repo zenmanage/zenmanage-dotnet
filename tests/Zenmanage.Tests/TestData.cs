@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace Zenmanage.Tests;
 
 internal static class TestData
@@ -10,6 +12,9 @@ internal static class TestData
 
     public static FlagTarget NumberTarget(double value)
         => new(null, null, null, null, new FlagValueData(null, new TypedValue(Number: value)));
+
+    public static FlagTarget JsonTarget(string rawJson)
+        => new(null, null, null, null, new FlagValueData(null, new TypedValue(Json: JsonDocument.Parse(rawJson).RootElement)));
 
     public static Rule Rule(string attribute, string @operator, object value, bool result)
         => new(null, null, null, new[] { new RuleCondition(attribute, @operator, value) }, null, new FlagValueData(null, new TypedValue(Boolean: result)));

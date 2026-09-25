@@ -4,7 +4,7 @@ namespace Zenmanage.Internal;
 
 internal static class SdkInfo
 {
-    private const string FallbackVersion = "1.0.0";
+    private const string FallbackVersion = "1.1.0";
 
     public const string ClientAgent = "zenmanage-dotnet";
 

@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace Zenmanage.Defaults;
 
 /// <summary>
@@ -20,6 +22,16 @@ public sealed class DefaultsCollection
     }
 
     public DefaultsCollection Add(string key, double value)
+    {
+        values[key] = value;
+        return this;
+    }
+
+    /// <summary>
+    /// Registers a json default (a JSON object or array). Evaluates to a json-typed
+    /// flag whose <c>AsJson()</c> returns this value unchanged.
+    /// </summary>
+    public DefaultsCollection Add(string key, JsonElement value)
     {
         values[key] = value;
         return this;

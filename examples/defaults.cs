@@ -18,5 +18,12 @@ var defaultedFlag = await zenmanage.Flags()
 var inlineDefault = await zenmanage.Flags()
     .SingleAsync("missing-flag", "fallback-value");
 
+var jsonConfig = await zenmanage.Flags().SingleAsync("theme-config", new Dictionary<string, object>
+{
+    ["mode"] = "light",
+    ["accent"] = "#4f46e5"
+});
+
 Console.WriteLine($"new-ui: {defaultedFlag.IsEnabled()}");
 Console.WriteLine($"missing-flag: {inlineDefault.AsString()}");
+Console.WriteLine($"theme-config: {jsonConfig.AsJson()}");

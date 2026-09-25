@@ -11,11 +11,11 @@ using Zenmanage.Tests.Helpers;
 namespace Zenmanage.Tests;
 
 /// <summary>
-/// The API is about to start serving a fourth flag type ("json") that this SDK's
-/// <see cref="FlagType"/> enum does not yet know about. A rules payload containing a
-/// json-typed flag must not break evaluation of the other, recognized flags, and
-/// looking up the json-typed flag itself must degrade like a missing flag (fall back
-/// to the caller's default) instead of throwing.
+/// The API may eventually serve a flag type this SDK's <see cref="FlagType"/> enum
+/// doesn't yet know about (e.g. one introduced after this SDK shipped). A rules
+/// payload containing such a flag must not break evaluation of the other,
+/// recognized flags, and looking up the unrecognized flag itself must degrade like
+/// a missing flag (fall back to the caller's default) instead of throwing.
 /// </summary>
 public sealed class UnknownFlagTypeTests
 {
@@ -46,10 +46,10 @@ public sealed class UnknownFlagTypeTests
             },
             {
               "version": "1",
-              "type": "json",
-              "key": "json-flag",
-              "name": "Json Flag",
-              "target": { "value": { "value": { "json": { "nested": { "enabled": true }, "list": [1, 2, 3] } } } }
+              "type": "future-type",
+              "key": "future-flag",
+              "name": "Future Flag",
+              "target": { "value": { "value": { "future-type": { "nested": { "enabled": true }, "list": [1, 2, 3] } } } }
             }
           ]
         }
@@ -74,7 +74,7 @@ public sealed class UnknownFlagTypeTests
     {
         var manager = CreateManagerWithLiveJsonPayload();
 
-        var flag = await manager.SingleAsync("json-flag", "fallback-value");
+        var flag = await manager.SingleAsync("future-flag", "fallback-value");
 
         Assert.Equal("fallback-value", flag.AsString());
     }
@@ -84,7 +84,7 @@ public sealed class UnknownFlagTypeTests
     {
         var manager = CreateManagerWithLiveJsonPayload();
 
-        await Assert.ThrowsAsync<EvaluationException>(() => manager.SingleAsync("json-flag"));
+        await Assert.ThrowsAsync<EvaluationException>(() => manager.SingleAsync("future-flag"));
     }
 
     [Fact]
@@ -97,7 +97,7 @@ public sealed class UnknownFlagTypeTests
         Assert.Contains(flags, f => f.Key == "bool-flag");
         Assert.Contains(flags, f => f.Key == "string-flag");
         Assert.Contains(flags, f => f.Key == "number-flag");
-        Assert.DoesNotContain(flags, f => f.Key == "json-flag");
+        Assert.DoesNotContain(flags, f => f.Key == "future-flag");
     }
 
     [Fact]
@@ -108,7 +108,7 @@ public sealed class UnknownFlagTypeTests
 
         await manager.AllAsync();
 
-        var warnings = logger.Entries.Where(e => e.Level == LogLevel.Warning && e.Message.Contains("json-flag")).ToList();
+        var warnings = logger.Entries.Where(e => e.Level == LogLevel.Warning && e.Message.Contains("future-flag")).ToList();
         Assert.Single(warnings);
     }
 

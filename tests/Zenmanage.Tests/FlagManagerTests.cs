@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.Extensions.Logging.Abstractions;
 using Zenmanage.Caching;
 using Zenmanage.Contexting;
@@ -10,6 +11,59 @@ namespace Zenmanage.Tests;
 
 public sealed class FlagManagerTests
 {
+    [Fact]
+    public async Task SingleAsync_EvaluatesJsonFlag_AsKnownType()
+    {
+        var flagData = new FlagData("1", FlagType.Json, "json-flag", "Json Flag", TestData.JsonTarget("""{"a":1}"""), Array.Empty<Rule>());
+        var manager = CreateManager(flagData);
+
+        var flag = await manager.SingleAsync("json-flag");
+
+        Assert.Equal(1, flag.AsJson().GetProperty("a").GetInt32());
+    }
+
+    [Fact]
+    public async Task AllAsync_IncludesJsonFlag_AlongsideOtherTypes()
+    {
+        var flagData = new FlagData("1", FlagType.Json, "json-flag", "Json Flag", TestData.JsonTarget("[1,2,3]"), Array.Empty<Rule>());
+        var manager = CreateManager(flagData);
+
+        var flags = await manager.AllAsync();
+
+        Assert.Contains(flags, f => f.Key == "json-flag");
+    }
+
+    [Fact]
+    public async Task SingleAsync_UsesInlineDictionaryDefault_AsJsonFlag_WhenFlagMissing()
+    {
+        var manager = CreateManager(Array.Empty<FlagData>());
+
+        var flag = await manager.SingleAsync("missing-flag", new Dictionary<string, object> { ["a"] = 1 });
+
+        Assert.Equal(1, flag.AsJson().GetProperty("a").GetInt32());
+    }
+
+    [Fact]
+    public async Task SingleAsync_UsesInlineListDefault_AsJsonFlag_WhenFlagMissing()
+    {
+        var manager = CreateManager(Array.Empty<FlagData>());
+
+        var flag = await manager.SingleAsync("missing-flag", new List<int> { 1, 2, 3 });
+
+        Assert.Equal(3, flag.AsJson().GetArrayLength());
+    }
+
+    [Fact]
+    public async Task SingleAsync_UsesDefaultsCollectionJsonElement_WhenFlagMissing()
+    {
+        var jsonDefault = JsonDocument.Parse("""{"nested":true}""").RootElement;
+        var defaults = new DefaultsCollection().Add("missing-flag", jsonDefault);
+        var manager = CreateManager(Array.Empty<FlagData>()).WithDefaults(defaults);
+
+        var flag = await manager.SingleAsync("missing-flag");
+
+        Assert.True(flag.AsJson().GetProperty("nested").GetBoolean());
+    }
     [Fact]
     public async Task SingleAsync_UsesInlineDefault_WhenFlagMissing()
     {
