@@ -63,6 +63,11 @@ public sealed class Flag
             return !string.IsNullOrEmpty(value.String);
         }
 
+        if (value.Json is not null)
+        {
+            return true;
+        }
+
         return false;
     }
 

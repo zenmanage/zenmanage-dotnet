@@ -110,11 +110,27 @@ public sealed class FlagTests
     }
 
     [Fact]
-    public void AsBool_ReturnsFalse_ForJsonFlag()
+    public void AsBool_ReturnsTrue_ForJsonFlag()
     {
         var flag = new Flag("1", FlagType.Json, "test", "Test", TestData.JsonTarget("[1,2,3]"));
 
-        Assert.False(flag.AsBool());
+        Assert.True(flag.AsBool());
+    }
+
+    [Fact]
+    public void AsBool_ReturnsTrue_ForJsonFlag_WithEmptyArrayValue()
+    {
+        var flag = new Flag("1", FlagType.Json, "test", "Test", TestData.JsonTarget("[]"));
+
+        Assert.True(flag.AsBool());
+    }
+
+    [Fact]
+    public void AsBool_ReturnsTrue_ForJsonFlag_WithScalarValue()
+    {
+        var flag = new Flag("1", FlagType.Json, "test", "Test", TestData.JsonTarget("5"));
+
+        Assert.True(flag.AsBool());
     }
 
     [Fact]
