@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace Zenmanage.Flagging;
 
 /// <summary>
@@ -5,6 +7,8 @@ namespace Zenmanage.Flagging;
 /// </summary>
 public sealed class Flag
 {
+    private static readonly JsonElement EmptyJsonArray = JsonDocument.Parse("[]").RootElement;
+
     public Flag(
         string version,
         FlagType type,
@@ -106,6 +110,26 @@ public sealed class Flag
         return 0;
     }
 
+    /// <summary>
+    /// Gets the flag value as decoded JSON. Both JSON objects and JSON arrays are
+    /// returned as-is via <see cref="JsonElement"/>. For a non-json flag, or for a json
+    /// flag whose decoded value isn't itself an object or array (a bare JSON scalar,
+    /// which the API allows but real flags won't normally use), this returns an empty
+    /// JSON array — the same safe-zero-value fallback <see cref="AsString"/>/<see cref="AsNumber"/>
+    /// use for their types.
+    /// </summary>
+    public JsonElement AsJson()
+    {
+        var value = GetTypedValue();
+
+        if (value.Json is { ValueKind: JsonValueKind.Object or JsonValueKind.Array } json)
+        {
+            return json;
+        }
+
+        return EmptyJsonArray;
+    }
+
     public object GetValue()
     {
         var value = GetTypedValue();
@@ -122,6 +146,11 @@ public sealed class Flag
         if (value.Number is not null)
         {
             return value.Number.Value;
+        }
+
+        if (value.Json is not null)
+        {
+            return value.Json.Value;
         }
 
         return string.Empty;

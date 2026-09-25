@@ -254,7 +254,24 @@ public sealed class FlagManager : IFlagManager
             float floatValue => new Flag("1", FlagType.Number, key, key, new FlagTarget(null, null, null, null, new FlagValueData(null, new TypedValue(Number: floatValue)))),
             double doubleValue => new Flag("1", FlagType.Number, key, key, new FlagTarget(null, null, null, null, new FlagValueData(null, new TypedValue(Number: doubleValue)))),
             decimal decimalValue => new Flag("1", FlagType.Number, key, key, new FlagTarget(null, null, null, null, new FlagValueData(null, new TypedValue(Number: (double)decimalValue)))),
+            JsonElement { ValueKind: JsonValueKind.Object or JsonValueKind.Array } jsonValue
+                => new Flag("1", FlagType.Json, key, key, new FlagTarget(null, null, null, null, new FlagValueData(null, new TypedValue(Json: jsonValue)))),
+            System.Collections.IDictionary dictionaryValue
+                => CreateJsonFlagFromDefault(key, dictionaryValue),
+            System.Collections.IEnumerable enumerableValue and not string
+                => CreateJsonFlagFromDefault(key, enumerableValue),
             _ => new Flag("1", FlagType.String, key, key, new FlagTarget(null, null, null, null, new FlagValueData(null, new TypedValue(String: Convert.ToString(defaultValue, System.Globalization.CultureInfo.InvariantCulture)))))
         };
+    }
+
+    /// <summary>
+    /// Object/array defaults (e.g. a <see cref="System.Collections.IDictionary"/> or a
+    /// list) are typed as json rather than falling through to the string branch and
+    /// being stringified, matching the PHP reference SDK's default-value typing.
+    /// </summary>
+    private static Flag CreateJsonFlagFromDefault(string key, object defaultValue)
+    {
+        var json = JsonSerializer.SerializeToElement(defaultValue, Serialization.JsonOptions);
+        return new Flag("1", FlagType.Json, key, key, new FlagTarget(null, null, null, null, new FlagValueData(null, new TypedValue(Json: json))));
     }
 }

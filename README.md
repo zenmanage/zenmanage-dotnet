@@ -112,6 +112,22 @@ var flag = await zenmanage.Flags()
 Console.WriteLine(flag.IsEnabled());
 ```
 
+### Json Flags
+
+```csharp
+var config = await zenmanage.Flags().SingleAsync("checkout-config", new Dictionary<string, object>
+{
+    ["maxRetries"] = 3,
+    ["providers"] = new[] { "stripe", "paypal" }
+});
+
+var maxRetries = config.AsJson().GetProperty("maxRetries").GetInt32();
+```
+
+A json default can be an inline `IDictionary`/`IEnumerable` (list, array, etc.), a
+`System.Text.Json.JsonElement`, or registered on a `DefaultsCollection` via
+`Add(key, JsonElement)`.
+
 ### Filesystem Caching
 
 ```csharp
@@ -137,6 +153,25 @@ builder.Services.AddSingleton(sp => new Zenmanage.Zenmanage(
         .WithCacheBackend(CacheBackend.Memory)
         .Build()));
 ```
+
+## Value Types & Cross-Type Coercion
+
+A flag's type is one of `Boolean`, `String`, `Number`, or `Json`. Each has a matching accessor (`AsBool()`, `AsString()`, `AsNumber()`, `AsJson()`), plus `IsEnabled()` for boolean flags specifically.
+
+**`AsJson()`** returns the decoded value as a `System.Text.Json.JsonElement`, covering both JSON objects and JSON arrays.
+
+**Calling the "wrong" accessor for a flag's type never throws** — it returns a safe zero value for that type instead of attempting a lossy conversion:
+
+| Called on → Flag type ↓ | `AsBool()` | `AsString()` | `AsNumber()` | `AsJson()` |
+|---|---|---|---|---|
+| `Boolean` | the bool | `"true"`/`"false"` | `1`/`0` | empty array |
+| `String` | `true` if non-empty | the string | parsed number, or `0` | empty array |
+| `Number` | `true` if non-zero | the number as a string | the number | empty array |
+| `Json` | `false` | `""` | `0` | the decoded value |
+
+A `Json` flag whose decoded value isn't itself an object or array (a bare JSON scalar such as `5` or `"x"`, which the API allows but which real flags won't normally use) makes `AsJson()` return an empty array too — the same safe-zero-value fallback as calling it on a non-json flag, rather than wrapping the scalar or throwing.
+
+**Default values** passed to `SingleAsync(key, defaultValue)` or `DefaultsCollection` are typed from the .NET value itself: an `IDictionary`, an `IEnumerable` (excluding `string`), or a `JsonElement` holding an object/array becomes a `Json`-typed flag (not a stringified fallback), so `AsJson()` on a missing flag with such a default returns that value unchanged.
 
 ## Configuration
 

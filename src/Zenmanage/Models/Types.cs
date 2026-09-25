@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace Zenmanage;
 
 /// <summary>
@@ -8,6 +10,7 @@ public enum FlagType
     Boolean,
     String,
     Number,
+    Json,
 
     /// <summary>
     /// A flag type this SDK version does not recognize (for example, a type introduced
@@ -32,7 +35,8 @@ public sealed record RuleContextTarget(string Identifier, string? Type = null);
 public sealed record TypedValue(
     bool? Boolean = null,
     string? String = null,
-    double? Number = null);
+    double? Number = null,
+    JsonElement? Json = null);
 
 public sealed record FlagValueData(string? Version, TypedValue Value);
 
