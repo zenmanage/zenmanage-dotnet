@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-09-25
+
 ### Added
 - `json` flag type support: `Flag.AsJson()` returns the decoded value as a `System.Text.Json.JsonElement`, covering both JSON objects and JSON arrays. Inline defaults (`IDictionary`, `IEnumerable`, or `JsonElement` holding an object/array) and `DefaultsCollection.Add(key, JsonElement)` now produce a json-typed flag instead of a stringified fallback.
 
