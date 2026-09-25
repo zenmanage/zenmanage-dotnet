@@ -110,6 +110,22 @@ public sealed class FlagTests
     }
 
     [Fact]
+    public void AsBool_ReturnsTrue_ForNumberFlag_WithZeroValue()
+    {
+        var flag = new Flag("1", FlagType.Number, "test", "Test", TestData.NumberTarget(0));
+
+        Assert.True(flag.AsBool());
+    }
+
+    [Fact]
+    public void AsBool_ReturnsTrue_ForStringFlag_WithEmptyValue()
+    {
+        var flag = new Flag("1", FlagType.String, "test", "Test", TestData.StringTarget(string.Empty));
+
+        Assert.True(flag.AsBool());
+    }
+
+    [Fact]
     public void AsBool_ReturnsTrue_ForJsonFlag()
     {
         var flag = new Flag("1", FlagType.Json, "test", "Test", TestData.JsonTarget("[1,2,3]"));
