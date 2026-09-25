@@ -7,7 +7,7 @@ namespace Zenmanage.Flagging;
 /// </summary>
 public sealed class Flag
 {
-    private static readonly JsonElement EmptyJsonArray = JsonDocument.Parse("[]").RootElement;
+    private static readonly JsonElement EmptyJsonArray = CreateEmptyJsonArray();
 
     public Flag(
         string version,
@@ -128,6 +128,12 @@ public sealed class Flag
         }
 
         return EmptyJsonArray;
+    }
+
+    private static JsonElement CreateEmptyJsonArray()
+    {
+        using var document = JsonDocument.Parse("[]");
+        return document.RootElement.Clone();
     }
 
     public object GetValue()
