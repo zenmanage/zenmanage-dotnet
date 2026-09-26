@@ -53,14 +53,13 @@ public sealed class Flag
             return value.Boolean.Value;
         }
 
-        if (value.Number is not null)
+        // Per the cross-SDK coercion contract, every non-boolean type returns true
+        // from AsBool() unconditionally -- the value is wrapped in a non-empty
+        // structure, and that wrapper is truthy, regardless of the underlying value
+        // (including a number flag set to 0, or a string flag set to "").
+        if (value.Number is not null || value.String is not null || value.Json is not null)
         {
-            return Math.Abs(value.Number.Value) > double.Epsilon;
-        }
-
-        if (value.String is not null)
-        {
-            return !string.IsNullOrEmpty(value.String);
+            return true;
         }
 
         return false;

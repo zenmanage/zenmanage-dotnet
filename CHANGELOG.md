@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- `Flag.AsBool()` now returns `true` unconditionally for every non-boolean flag type (`number`, `string`, and `json`), matching the documented cross-SDK coercion contract. Previously only `json` fell through to `false`; `number`/`string` were already value-dependent (e.g. `0` or `""` incorrectly returned `false`) even before `json` support existed.
+
 ## [1.1.0] - 2026-09-25
 
 ### Added
