@@ -1,6 +1,6 @@
 # Zenmanage .NET SDK
 
-[![CI](https://github.com/zenmanage/zenmanage-dotnet/actions/workflows/ci.yml/badge.svg)](https://github.com/zenmanage/zenmanage-dotnet/actions/workflows/ci.yml) [![Version](https://img.shields.io/nuget/v/Zenmanage)](https://www.nuget.org/packages/Zenmanage) [![License](https://img.shields.io/github/license/zenmanage/zenmanage-dotnet)](LICENSE)
+[![CI](https://github.com/zenmanage/zenmanage-dotnet/actions/workflows/ci.yml/badge.svg)](https://github.com/zenmanage/zenmanage-dotnet/actions/workflows/ci.yml) [![Version](https://img.shields.io/nuget/v/Zenmanage)](https://www.nuget.org/packages/Zenmanage) [![License](https://img.shields.io/github/license/zenmanage/zenmanage-dotnet)](LICENSE) [![Codacy Badge](https://app.codacy.com/project/badge/Grade/5e9dda89b0e44fd2a1ffb7f4032a88be)](https://app.codacy.com/gh/zenmanage/zenmanage-dotnet/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
 
 Add feature flags to your .NET applications in minutes. Control feature rollouts, A/B tests, and configuration values without deploying code.
 
