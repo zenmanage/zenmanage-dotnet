@@ -1,8 +1,6 @@
 # Zenmanage .NET SDK
 
-[![CI](https://github.com/zenmanage/zenmanage-dotnet/actions/workflows/ci.yml/badge.svg)](https://github.com/zenmanage/zenmanage-dotnet/actions/workflows/ci.yml)
-[![Release](https://github.com/zenmanage/zenmanage-dotnet/actions/workflows/release.yml/badge.svg)](https://github.com/zenmanage/zenmanage-dotnet/actions/workflows/release.yml)
-[![NuGet](https://img.shields.io/nuget/v/Zenmanage.svg)](https://www.nuget.org/packages/Zenmanage)
+[![CI](https://github.com/zenmanage/zenmanage-dotnet/actions/workflows/ci.yml/badge.svg)](https://github.com/zenmanage/zenmanage-dotnet/actions/workflows/ci.yml) [![Version](https://img.shields.io/nuget/v/Zenmanage)](https://www.nuget.org/packages/Zenmanage) [![License](https://img.shields.io/github/license/zenmanage/zenmanage-dotnet)](LICENSE)
 
 Add feature flags to your .NET applications in minutes. Control feature rollouts, A/B tests, and configuration values without deploying code.
 
