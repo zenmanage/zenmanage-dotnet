@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [Zenmanage.AspNetCore 1.0.1] - 2026-10-30
+
+### Changed
+- Rebuilt against Zenmanage 1.1.1, so the `Flag.AsBool()` fix in 1.1.1 reaches ASP.NET Core users. No code changes in this package.
+
 ## [1.1.1] - 2026-10-30
 
 ### Fixed
