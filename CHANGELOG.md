@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [Zenmanage.AspNetCore 1.0.2] - 2026-11-07
+
+### Changed
+- Updated the `Microsoft.SourceLink.GitHub` build-time dependency to 10.0.403. No code changes in this package.
+
 ## [Zenmanage.AspNetCore 1.0.1] - 2026-10-30
 
 ### Changed
