@@ -7,8 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
+## [Zenmanage.AspNetCore 1.1.0] - 2026-11-21
 
+### Changed
+- Updated the `Microsoft.SourceLink.GitHub` build-time dependency to 11.0.100 and rebuilt against Zenmanage 1.2.0. No code changes in this package.
+
+## [1.2.0] - 2026-11-21
+
+### Changed
+- Updated `Microsoft.Extensions.Logging.Abstractions` to 11.0.0 and the `Microsoft.SourceLink.GitHub` build-time dependency to 11.0.100. No changes to the SDK's public API.
 - Pinned GitHub Actions to commit SHAs. No SDK behavior changes.
 
 ## [Zenmanage.AspNetCore 1.0.2] - 2026-11-07
